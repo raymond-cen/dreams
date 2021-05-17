@@ -9,8 +9,8 @@ def clear_v1():
     data['dm'] = []    
     reset_message()
     sqld = "DELETE FROM users"
+    mycursor.execute(sqld)
     sqld = "DELETE FROM tokens"
-    
     mycursor.execute(sqld)
     mydb.commit()
 

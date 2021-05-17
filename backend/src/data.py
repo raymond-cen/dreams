@@ -37,11 +37,7 @@ mydb = mysql.connector.connect(
     database ="user_id"
 )
 mycursor = mydb.cursor()
-sqlf = "INSERT INTO users (user_id, name_first, name_last) VALUES (%s, %s, %s)"
-sqld = "DELETE FROM users"
-user1 = (1, "first", "one")
-mycursor.execute(sqld)
-mydb.commit()
+
 # mycursor.execute('SHOW TABLES')
 # SELECT MAX(Id) FROM Table
 # for db in mycursor:
