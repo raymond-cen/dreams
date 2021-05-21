@@ -154,7 +154,7 @@ def auth_register_v1(email, password, name_first, name_last):
     sqlf = "SELECT MAX(user_id) FROM users"
     mycursor.execute(sqlf)
     u_count1 = mycursor.fetchone()
-    print(u_count1)
+
     sqlf = ("INSERT INTO tokens"
             "(token, user_id)"
             "VALUES (%s, %s)")
@@ -289,6 +289,10 @@ def auth_passwordreset_reset_v1(reset_code, new_password):
     for k in enumerate(data["users"]):
         if k["auth_user_id"] == auth_id:
             k["password"] = hash(new_password)
+            sqlf = "UPDATE users SET password = %s WHERE user_id = %s"
+            val = (hash(new_password), auth_id)
+            mycursor.execute(sqlf, val)
+            mydb.commit()
                                      
     return {}
 

@@ -1,4 +1,4 @@
-from src.data import data
+from src.data import data, mycursor, mydb
 from src.auth import decode_token
 from src.error import InputError
 from src.error import AccessError
@@ -83,5 +83,18 @@ def channels_create_v1(token, name, is_public):
                 'members': [{'members_id': [d]}], 'standup': {'active': False, 'time': 0 ,'messages': []}}
     # append the channel information to the data
     data['channels'].append(channels)
+    sqlf = ("INSERT INTO channels"
+            "(channel_id, channel_name, is_public)"
+            "VALUES (%s, %s, %s)")
+
+    values = (channel_id, name, 1)
     
+    mycursor.execute(sqlf, values)
+
+    sqlf = ("INSERT INTO channel_members"
+            "(channel_id, user_id, owner_permission)"
+            "VALUES (%s, %s, %s)")
+    values = (channel_id, d, 1)
+    mycursor.execute(sqlf, values)
+    mydb.commit()
     return {'channel_id': channel_id}

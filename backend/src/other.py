@@ -12,6 +12,10 @@ def clear_v1():
     mycursor.execute(sqld)
     sqld = "DELETE FROM tokens"
     mycursor.execute(sqld)
+    sqld = "DELETE FROM channels"
+    mycursor.execute(sqld)
+    sqld = "DELETE FROM channel_members"
+    mycursor.execute(sqld)
     mydb.commit()
 
 
