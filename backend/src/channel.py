@@ -58,10 +58,18 @@ def member_details(auth_user_id):
     helper function that returns a dictionary containing the user's first name, last name and id
     """
     member_info = {}
-    member_index = next((index for (index, d) in enumerate(data['users']) if d["auth_user_id"] == auth_user_id), None)
-    member_info['u_id'] = data['users'][member_index]['auth_user_id']
-    member_info['name_first'] = data['users'][member_index]['name_first']
-    member_info['name_last'] = data['users'][member_index]['name_last']
+    # member_index = next((index for (index, d) in enumerate(data['users']) if d["auth_user_id"] == auth_user_id), None)
+    member_info['u_id'] = auth_user_id
+    # member_info['name_first'] = data['users'][member_index]['name_first']
+    # member_info['name_last'] = data['users'][member_index]['name_last']
+
+    sqlf = ("""SELECT name_first, name_last FROM users
+            WHERE user_id = %s""")
+    values = (auth_user_id,)
+    mycursor.execute(sqlf, values)
+    result = mycursor.fetchone()
+    member_info['name_first'] = result[0]
+    member_info['name_last'] = result[1]
     return member_info
 
 def channel_details_v1(token, channel_id):
@@ -87,11 +95,28 @@ def channel_details_v1(token, channel_id):
     if auth_user_id not in data['channels'][channel_index]['members'][0]['members_id']:
         raise AccessError("Authorised user is not a member of channel with channel_id")
     owner_info = []
-    for owner_id in data['channels'][channel_index]['owner_id']:
-        owner_info.append(member_details(owner_id))
+    # for owner_id in data['channels'][channel_index]['owner_id']:
+    #     owner_info.append(member_details(owner_id))
     all_members = []
-    for members in data['channels'][channel_index]['members'][0]['members_id']:
-        all_members.append(member_details(members))
+    # for members in data['channels'][channel_index]['members'][0]['members_id']:
+    #     all_members.append(member_details(members))
+
+    sqlf = ("""SELECT user_id FROM channel_members
+            WHERE channel_id = %s AND owner_permission = %s""")
+    values = (channel_id, 1)
+    mycursor.execute(sqlf, values)
+    result = mycursor.fetchall()
+
+    for owner_id in result:
+        owner_info.append(member_details(owner_id[0]))
+
+    sqlf = ("""SELECT user_id FROM channel_members
+            WHERE channel_id = %s""")
+    values = (channel_id,)
+    mycursor.execute(sqlf, values)
+    result = mycursor.fetchall()
+    for members in result:
+        all_members.append(member_details(members[0]))
     all_member_dict = {
         'name': data['channels'][channel_index]['channel_name'],
         'owner_members': owner_info,
