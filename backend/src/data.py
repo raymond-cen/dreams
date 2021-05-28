@@ -1,6 +1,7 @@
 import json
 import time
 import mysql.connector
+
 data = {
     'users': [
     ],
@@ -42,3 +43,12 @@ mycursor = mydb.cursor()
 # SELECT MAX(Id) FROM Table
 # for db in mycursor:
 #     print(db)
+
+# mycursor.execute("SELECT channel_id, channel_name FROM channels")
+# result = mycursor.fetchall()
+# for channel_info in result:
+#     output = {
+#         "channel_id": channel_info[0],
+#         "name": channel_info[1]
+#     }
+#     print(channel_info)

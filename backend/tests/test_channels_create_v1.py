@@ -49,7 +49,7 @@ def test_short_names():
     assert channels_create_v1(user2['token'], "de", True) == {'channel_id': 2}
 
 
-clear_v1()
+
 # invalid auth_id that do not exist in our data to create a channel
 
 
@@ -62,3 +62,4 @@ def test_invalid_wrong_token():
     clear_v1()
     with pytest.raises(AccessError):
         assert channels_create_v1(create_token(110, 120), 'allthatglittersisgold', True)
+clear_v1()

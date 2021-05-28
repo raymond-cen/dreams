@@ -1,6 +1,6 @@
 import jwt
 import time
-from src.data import data
+from src.data import data, mycursor, mydb
 from src.error import InputError, AccessError
 from src.auth import decode_token
 from src.user import find_user
@@ -34,7 +34,19 @@ def channel_invite_v1(token, channel_id, u_id):
     if auth_user_id not in data['channels'][channel_index]['members'][0]['members_id']:
         raise AccessError('the authorised user is not already a member of the channel')
     data['channels'][channel_index]['members'][0]['members_id'].append(u_id)
+    sqlf = ("""SELECT permission FROM users
+            WHERE user_id = %s""")
+    value = (u_id,)
+    mycursor.execute(sqlf, value)
+    result = mycursor.fetchone()
 
+    sqlf = ("""INSERT INTO channel_members
+            (channel_id, user_id, owner_permission)
+            VALUES (%s, %s, %s)""")
+
+    value = (channel_id, u_id, result[0])
+    mycursor.execute(sqlf, value)
+    mydb.commit()
 
     if data['users'][user_index]['permission'] == 1:
         data['channels'][channel_index]['owner_id'].append(u_id)
@@ -227,7 +239,7 @@ def channel_join_v1(token, channel_id):
                 if mem == u_id:
                     raise AccessError("Already joined this channel")
             # check whether this channel public or not
-            if data['channels'][i]['is_public'] == False and data['users'][(u_id - 1)]['permission'] is not 1:
+            if data['channels'][i]['is_public'] == False and data['users'][(u_id - 1)]['permission'] != 1:
                 raise AccessError("The channel is private and you are not authorised to join")
             # public channel or global owner
             else:
@@ -325,7 +337,7 @@ def channel_removeowner_v1(token, channel_id, u_id):
         raise AccessError('Incorrect access')
 
     # check token user id inside owner list or not 
-    if auth_user_id not in owner_ls and data['users'][(auth_user_id - 1)]['permission'] is 2:
+    if auth_user_id not in owner_ls and data['users'][(auth_user_id - 1)]['permission'] == 2:
         raise AccessError("autherised user not an owner of this channel")
     if len(owner_ls) == 1:
         raise InputError("Can't remove the only owner in this channel")

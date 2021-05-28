@@ -105,11 +105,11 @@ def auth_register_v1(email, password, name_first, name_last):
     """
     u_ls = data.get('users')
     u_count = len(u_ls)
-    # Set permission for global user is 1 and members is 2
+    # Set permission for global user is 1 and members is 0
     if u_count == 0:
         permission = 1
     else:
-        permission = 2
+        permission = 0
     
     # Invalid email
     if check_email(email) is not True:

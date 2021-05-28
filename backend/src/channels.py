@@ -7,7 +7,7 @@ import itertools
 
 def channels_list_v1(token):
     # channel info for storing the sliced dictionaries from a list
-    d = decode_token(token)
+    auth_id = decode_token(token)
     channelinfo = []
     # get the list of dictionaries of key:users to know how many times you need to iterate
     user = data.get('users')
@@ -15,23 +15,34 @@ def channels_list_v1(token):
     # check whether the input argument (auth_user_id) exists in the data or not
     for i in range(len(user)):
         ids.append((user[i]['auth_user_id']))
-    if d not in ids:
+    if auth_id not in ids:
         # raise an error if the auth_id is not valid
         raise AccessError("Invalid auth id")
     # iterate through the list of dictionaries (channels) that has 'channels' as key
-    for i in range(len(data['channels'])):
-        # check each item (channel) in the list if the given user exists in the members
-        # list of that channel
-        if d in (data['channels'][i]['members'][0]['members_id']):
-            # if the id is a member of the channel then store the associated details of the
-            # channel in variable out
-            # out = dict(itertools.islice(data['channels'][i].items(), 2))
-            out = {
-                "channel_id": data['channels'][i]['channel_id'],
-                "name": data['channels'][i]["channel_name"]
-                }
-            # append the info from out to channelinfo
-            channelinfo.append(out)
+    # for i in range(len(data['channels'])):
+    #     # check each item (channel) in the list if the given user exists in the members
+    #     # list of that channel
+    #     if auth_id in (data['channels'][i]['members'][0]['members_id']):
+    #         # if the id is a member of the channel then store the associated details of the
+    #         # channel in variable out
+    #         # out = dict(itertools.islice(data['channels'][i].items(), 2))
+    #         out = {
+    #             "channel_id": data['channels'][i]['channel_id'],
+    #             "name": data['channels'][i]["channel_name"]
+    #             }
+    #         # append the info from out to channelinfo
+    #         channelinfo.append(out)
+    sqlf = ("""SELECT d.channel_id, d.channel_name FROM channels d 
+            INNER JOIN channel_members u ON d.channel_id = u.channel_id 
+            WHERE u.user_id = %s""")
+    mycursor.execute(sqlf, (auth_id,))
+    result = mycursor.fetchall()
+    for channel_info in result:
+        output = {
+            "channel_id": channel_info[0],
+            "name": channel_info[1]
+        }
+        channelinfo.append(output)
     return {'channels': channelinfo}
 
 
@@ -50,13 +61,21 @@ def channels_listall_v1(token):
         # raise an error if the auth_id is not valid ie if it does not exist in ids
         raise AccessError("Invalid auth id")
     # iterate over all the channels and slice out the associated details and append to channel_listall
-    for i in range(len(data['channels'])):
-        out = dict(itertools.islice(data['channels'][i].items(), 2))
-        out = {
-        "channel_id": data['channels'][i]['channel_id'],
-        "name": data['channels'][i]["channel_name"]
+    # for i in range(len(data['channels'])):
+    #     out = dict(itertools.islice(data['channels'][i].items(), 2))
+    #     out = {
+    #     "channel_id": data['channels'][i]['channel_id'],
+    #     "name": data['channels'][i]["channel_name"]
+    #     }
+    #     channel_listall.append(out)
+    mycursor.execute("SELECT channel_id, channel_name FROM channels")
+    result = mycursor.fetchall()
+    for channel_info in result:
+        output = {
+            "channel_id": channel_info[0],
+            "name": channel_info[1]
         }
-        channel_listall.append(out)
+        channel_listall.append(output)
     return {'channels': channel_listall}
 
 
