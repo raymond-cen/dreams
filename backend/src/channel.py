@@ -7,6 +7,27 @@ from src.user import find_user
 
 SECRET = 'OURSECRET'
 
+def check_channel_exists(channel_id):
+    sqlf = ("""SELECT (1) FROM channels where channel_id = %s LIMIT 1 """)
+    value = (channel_id,)
+    mycursor.execute(sqlf, value)
+    if mycursor.fetchone() is None:
+        raise InputError("channel_id does not refer to a valid channel.")
+
+def check_user_exists(user_id):
+    sqlf = ("""SELECT (1) FROM users where user_id = %s LIMIT 1 """)
+    value = (user_id,)
+    mycursor.execute(sqlf, value)
+    if mycursor.fetchone() is None:
+        raise InputError("user_id is not valid")
+
+def check_user_in_channel(channel_id, u_id):
+    sqlf = ("""SELECT (1) FROM channel_members where channel_id = %s and user_id = %s LIMIT 1 """)
+    value = (channel_id, u_id)
+    mycursor.execute(sqlf, value)
+    if mycursor.fetchone() is None:
+        raise AccessError('the authorised user is not already a member of the channel')
+
 def channel_invite_v1(token, channel_id, u_id):
     '''
     Function invites a user to join a channel
@@ -23,17 +44,21 @@ def channel_invite_v1(token, channel_id, u_id):
     '''
     auth_user_id = decode_token(token)
     channel_index = next((index for (index, d) in enumerate(data['channels']) if d["channel_id"] == channel_id), None)
-    # Check if channel id exists
-    if channel_index is None:
-        raise InputError("channel_id does not refer to a valid channel.")
+    # # Check if channel id exists
+    # if channel_index is None:
+    #     raise InputError("channel_id does not refer to a valid channel.")
+    check_channel_exists(channel_id)
+    check_user_exists(u_id)
     if auth_user_id == u_id:
         return {}
-    user_index = next((index for (index, d) in enumerate(data['users']) if d["auth_user_id"] == u_id), None)  
-    if user_index is None:
-        raise InputError("u_id does not refer to a valid user")
-    if auth_user_id not in data['channels'][channel_index]['members'][0]['members_id']:
-        raise AccessError('the authorised user is not already a member of the channel')
+    # user_index = next((index for (index, d) in enumerate(data['users']) if d["auth_user_id"] == u_id), None)  
+    # if user_index is None:
+    #     raise InputError("u_id does not refer to a valid user")
+    # if auth_user_id not in data['channels'][channel_index]['members'][0]['members_id']:
+    #     raise AccessError('the authorised user is not already a member of the channel')
     data['channels'][channel_index]['members'][0]['members_id'].append(u_id)
+    check_user_in_channel(channel_id, auth_user_id)
+    
     sqlf = ("""SELECT permission FROM users
             WHERE user_id = %s""")
     value = (u_id,)
@@ -48,8 +73,8 @@ def channel_invite_v1(token, channel_id, u_id):
     mycursor.execute(sqlf, value)
     mydb.commit()
 
-    if data['users'][user_index]['permission'] == 1:
-        data['channels'][channel_index]['owner_id'].append(u_id)
+    # if data['users'][user_index]['permission'] == 1:
+    #     data['channels'][channel_index]['owner_id'].append(u_id)
 
     return {}
 
@@ -86,14 +111,15 @@ def channel_details_v1(token, channel_id):
     Return Value:
         Returns a dictionary containing
     '''
-    channel_index = next((index for (index, d) in enumerate(data['channels']) if d["channel_id"] == channel_id), None)
+    # channel_index = next((index for (index, d) in enumerate(data['channels']) if d["channel_id"] == channel_id), None)
     # Check if channel id exists
-    if channel_index is None:
-        raise InputError("Channel ID is not a valid channel")
+    check_channel_exists(channel_id)
     # Check if user is in channel
     auth_user_id = decode_token(token)
-    if auth_user_id not in data['channels'][channel_index]['members'][0]['members_id']:
-        raise AccessError("Authorised user is not a member of channel with channel_id")
+    # if auth_user_id not in data['channels'][channel_index]['members'][0]['members_id']:
+    #     raise AccessError("Authorised user is not a member of channel with channel_id")
+    check_user_in_channel(channel_id, auth_user_id)
+
     owner_info = []
     # for owner_id in data['channels'][channel_index]['owner_id']:
     #     owner_info.append(member_details(owner_id))
@@ -117,8 +143,15 @@ def channel_details_v1(token, channel_id):
     result = mycursor.fetchall()
     for members in result:
         all_members.append(member_details(members[0]))
+
+    sqlf = ("""SELECT channel_name FROM channels
+            WHERE channel_id = %s""")
+    values = (channel_id,)
+    mycursor.execute(sqlf, values)
+    result = mycursor.fetchone()
+
     all_member_dict = {
-        'name': data['channels'][channel_index]['channel_name'],
+        'name': result[0],
         'owner_members': owner_info,
         'all_members': all_members
     }
@@ -203,19 +236,25 @@ def channel_messages_v1(token, channel_id, start):
 
 
 def channel_leave_v1(token, channel_id):
-    channel_index = next((index for (index, d) in enumerate(data['channels']) if d["channel_id"] == channel_id), None)
+    # channel_index = next((index for (index, d) in enumerate(data['channels']) if d["channel_id"] == channel_id), None)
     # Check if channel id exists
-    if channel_index is None:
-        raise InputError("Channel ID is not a valid channel")
+    check_channel_exists(channel_id)
     # Check if user is in channel
     auth_user_id = decode_token(token)
-    if auth_user_id not in data['channels'][channel_index]['members'][0]['members_id']:
-        raise AccessError("Authorised user is not a member of channel with channel_id")
-    auth_user_id = decode_token(token)
-    data['channels'][channel_index]['members'][0]['members_id'].remove(auth_user_id)
+    check_user_exists(auth_user_id)
+    # if auth_user_id not in data['channels'][channel_index]['members'][0]['members_id']:
+    #     raise AccessError("Authorised user is not a member of channel with channel_id")
+    check_user_in_channel(channel_id, auth_user_id)
 
-    if auth_user_id in data['channels'][channel_index]['owner_id']: 
-        data['channels'][channel_index]['owner_id'].remove(auth_user_id)
+    # data['channels'][channel_index]['members'][0]['members_id'].remove(auth_user_id)
+
+    # if auth_user_id in data['channels'][channel_index]['owner_id']: 
+    #     data['channels'][channel_index]['owner_id'].remove(auth_user_id)
+    sqlf = ("""DELETE FROM channel_members WHERE 
+            user_id = %s AND channel_id = %s""")
+    values = (auth_user_id, channel_id)
+    mycursor.execute(sqlf, values)
+    mydb.commit()
     return {
     }
 
@@ -238,43 +277,77 @@ def channel_join_v1(token, channel_id):
         Returns <empty dictionary> on <global owner want to join valid channel>
     '''
     # get users info from data and store in variable user
-    users = data.get('users')
-    ids = []
-    channel = data.get('channels')
-    channel_ids = []
-    # check whether the auth_id is valid or not
-    for i in range(len(users)):
-        ids.append((users[i]['auth_user_id']))
+    # users = data.get('users')
+    # ids = []
+    # channel = data.get('channels')
+    # channel_ids = []
+    # # check whether the auth_id is valid or not
+    # for i in range(len(users)):
+    #     ids.append((users[i]['auth_user_id']))
     # raise an error if the auth_id is not valid
     u_id = decode_token(token)    
-    print(u_id)
-
-    if u_id not in ids:
-        raise InputError("Invalid auth id")
-    for i in range(len(channel)):
-        channel_ids.append((channel[i]['channel_id']))
+    check_user_exists(u_id)
+    # if u_id not in ids:
+    #     raise InputError("Invalid auth id")
+    # for i in range(len(channel)):
+    #     channel_ids.append((channel[i]['channel_id']))
     # check whether the channel_id is valid or not
-    if channel_id not in channel_ids:
-        raise InputError("Invalid channel id")
-    for i in range(len(data['channels'])):
-        if channel_id is data['channels'][i]['channel_id']:
-            member_ls = data['channels'][i]['members'][0]['members_id']
-            for mem in member_ls:
-                # not allow a member to rejoin a channel they alreay in 
-                if mem == u_id:
-                    raise AccessError("Already joined this channel")
-            # check whether this channel public or not
-            if data['channels'][i]['is_public'] == False and data['users'][(u_id - 1)]['permission'] != 1:
-                raise AccessError("The channel is private and you are not authorised to join")
-            # public channel or global owner
-            else:
-                member_ls.append(u_id)
-                # golbal owner to join both public and private channels as a owner
-                if data['users'][(u_id - 1)]['permission'] == 1:
-                    data['channels'][i]['owner_id'].append(u_id)
+    # if channel_id not in channel_ids:
+    #     raise InputError("Invalid channel id")
+    check_channel_exists(channel_id)
+    # raise accesserror if user is already in the channel
+    sqlf = ("""SELECT (1) FROM channel_members where channel_id = %s and user_id = %s LIMIT 1 """)
+    value = (channel_id, u_id)
+    mycursor.execute(sqlf, value)
+    if mycursor.fetchone() is not None:
+        raise AccessError('Already joined this channel')
+    
+    sqlf = ("""SELECT is_public FROM channels where channel_id = %s LIMIT 1 """)
+    value = (channel_id,)
+    mycursor.execute(sqlf, value)
+    if mycursor.fetchone()[0] == 0:
+        sqlf = ("""SELECT permission FROM users
+            WHERE user_id = %s""")
+        values = (u_id,)
+        mycursor.execute(sqlf, values)
+        result = mycursor.fetchone()
+        if result[0] != 1:
+            raise AccessError("The channel is private and you are not authorised to join")
+    # for i in range(len(data['channels'])):
+    #     if channel_id is data['channels'][i]['channel_id']:
+    #         member_ls = data['channels'][i]['members'][0]['members_id']
+    #         for mem in member_ls:
+    #             # not allow a member to rejoin a channel they alreay in 
+    #             if mem == u_id:
+    #                 raise AccessError("Already joined this channel")
+    #         # check whether this channel public or not
+    #         if data['channels'][i]['is_public'] == False and data['users'][(u_id - 1)]['permission'] != 1:
+    #             raise AccessError("The channel is private and you are not authorised to join")
+    #         # public channel or global owner
+    #         else:
+    #             member_ls.append(u_id)
+    #             # golbal owner to join both public and private channels as a owner
+    #             if data['users'][(u_id - 1)]['permission'] == 1:
+    #                 data['channels'][i]['owner_id'].append(u_id)
+    sqlf = ("""SELECT permission FROM users
+            WHERE user_id = %s""")
+    values = (u_id,)
+    mycursor.execute(sqlf, values)
+    result = mycursor.fetchone()
+    sqlf = (""" INSERT INTO channel_members
+            (channel_id, user_id, owner_permission)
+            VALUES (%s, %s, %s)""")
+    values = (channel_id, u_id, result[0])
+    mycursor.execute(sqlf, values)
+    mydb.commit()
     return {}
 
-
+def check_if_owner(channel_id, u_id):
+    sqlf = ("""SELECT (1) FROM channel_members where channel_id = %s and user_id = %s and owner_permission = %s LIMIT 1 """)
+    value = (channel_id, u_id, 1)
+    mycursor.execute(sqlf, value)
+    if mycursor.fetchone() is None:
+        raise AccessError("Authorised user is not an owner of this channel")
 
 def channel_addowner_v1(token, channel_id, u_id):
     '''<Add owner to a channel>
@@ -295,30 +368,38 @@ def channel_addowner_v1(token, channel_id, u_id):
         Returns <empty dictionary> on <valid autherised user with valid permission add another valid owner of this valid channel>
     '''
     auth_user_id = decode_token(token)
-    if find_user('auth_user_id', auth_user_id) == -1:
-        raise AccessError('Incorrect access')
+    # if find_user('auth_user_id', auth_user_id) == -1:
+    #     raise AccessError('Incorrect access')
 
     #Checking if Channel exists
-    channel_found = False
-    for i in range(len(data['channels'])):
-        if channel_id is data['channels'][i]['channel_id']:
-            channel_found = True
+    check_channel_exists(channel_id)
+    check_user_exists(u_id)
+    check_user_in_channel(channel_id, auth_user_id)
 
-    if channel_found == False:
-        raise InputError("Channel ID is not valid")
+    sqlf = ("""SELECT (1) FROM channel_members where channel_id = %s and user_id = %s and owner_permission = %s LIMIT 1 """)
+    value = (channel_id, auth_user_id, 0)
+    mycursor.execute(sqlf, value)
+    if mycursor.fetchone() is not None:
+        raise AccessError("Authorised user is not an owner of this channel")
 
     #User trying to add owner is not part of the channel 
-    if auth_user_id not in data['channels'][channel_id - 1]['owner_id']:
-        raise AccessError("Authorised user is not a member of channel with channel_id")
+    # if auth_user_id not in data['channels'][channel_id - 1]['owner_id']:
+    #     raise AccessError("Authorised user is not a member of channel with channel_id")
 
     #Checking if Owner is already owner
-    if u_id in data['channels'][channel_id - 1]['owner_id']:
-            raise InputError('Already a owner of this channel')
+    # if u_id in data['channels'][channel_id - 1]['owner_id']:
+    #         raise InputError('Already a owner of this channel')
        
     #Appending user to owners list
-    for i in range(len(data['channels'])):
-        if channel_id is data['channels'][i]['channel_id']:
-            data['channels'][i]['owner_id'].append(u_id)
+    # for i in range(len(data['channels'])):
+    #     if channel_id is data['channels'][i]['channel_id']:
+    #         data['channels'][i]['owner_id'].append(u_id)
+
+    sqlf = (""" UPDATE channel_members SET owner_permission = %s
+            WHERE channel_id = %s and user_id = %s""")
+    values = (1, channel_id, u_id)
+    mycursor.execute(sqlf, values)
+    mydb.commit()
     return {}
 
 
@@ -343,12 +424,10 @@ def channel_removeowner_v1(token, channel_id, u_id):
         Returns <empty dictionary> on <valid autherised user with valid permission remove another valid owner of this valid channel>
     '''
     # channel id valid or not 
-    channel = data.get('channels')
-    channel_ids = []
-    for i in range(len(channel)):
-        channel_ids.append((channel[i]['channel_id']))
-    if channel_id not in channel_ids:
-        raise InputError("Invalid channel id")
+    check_channel_exists(channel_id)
+    check_user_exists(u_id)
+    
+
     # how many in owner list
     for i in range(len(data['channels'])):
         if channel_id is data['channels'][i]['channel_id']:
@@ -357,23 +436,28 @@ def channel_removeowner_v1(token, channel_id, u_id):
     
     # decode token
     auth_user_id = decode_token(token)
-    # token contain invalid id
-    if find_user('auth_user_id', auth_user_id) == -1:
-        raise AccessError('Incorrect access')
-
+    check_user_in_channel(channel_id, auth_user_id)
+    # # token contain invalid id
+    # if find_user('auth_user_id', auth_user_id) == -1:
+    #     raise AccessError('Incorrect access')
+    check_if_owner(channel_id, auth_user_id)
     # check token user id inside owner list or not 
-    if auth_user_id not in owner_ls and data['users'][(auth_user_id - 1)]['permission'] == 2:
-        raise AccessError("autherised user not an owner of this channel")
+    # if auth_user_id not in owner_ls or data['users'][(auth_user_id - 1)]['permission'] != 1:
+    #     raise AccessError("autherised user not an owner of this channel")
     if len(owner_ls) == 1:
         raise InputError("Can't remove the only owner in this channel")
     # u_id in owner list or not 
-    if u_id not in owner_ls:
-        raise InputError("Not an owner of this channel")
+    # if u_id not in owner_ls:
+    #     raise InputError("Not an owner of this channel")
     
-    # normal remove
-    for i in range(len(data['channels'])):
-        if channel_id is data['channels'][i]['channel_id']:
-            data['channels'][i]['owner_id'].remove(u_id)
+    # # normal remove
+    # for i in range(len(data['channels'])):
+    #     if channel_id is data['channels'][i]['channel_id']:
+    #         data['channels'][i]['owner_id'].remove(u_id)
 
-
+    sqlf = (""" UPDATE channel_members SET owner_permission = %s
+            WHERE channel_id = %s and user_id = %s""")
+    values = (0, channel_id, u_id)
+    mycursor.execute(sqlf, values)
+    mydb.commit()
     return {}

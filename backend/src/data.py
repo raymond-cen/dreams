@@ -52,3 +52,11 @@ mycursor = mydb.cursor()
 #         "name": channel_info[1]
 #     }
 #     print(channel_info)
+
+sqlf = ("""SELECT (1) FROM channels where channel_id = %s LIMIT 1 """)
+value = (4,)
+mycursor.execute(sqlf, value)
+print(mycursor.fetchone())
+if mycursor.fetchone():
+    print('hi')
+

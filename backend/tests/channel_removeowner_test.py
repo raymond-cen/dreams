@@ -2,9 +2,11 @@ from src.channel import channel_removeowner_v1, channel_addowner_v1
 from src.channels import channels_create_v1
 from src.auth import auth_register_v1, create_token
 from src.error import InputError, AccessError
+from src.other import clear_v1
 import pytest
 
 def test_remove_success():
+    clear_v1()
     global user1
     user1 = auth_register_v1("abcd@gmail.com", "123456", "ab", "cd")
     global channel

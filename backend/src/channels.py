@@ -105,9 +105,10 @@ def channels_create_v1(token, name, is_public):
     sqlf = ("INSERT INTO channels"
             "(channel_id, channel_name, is_public)"
             "VALUES (%s, %s, %s)")
-
-    values = (channel_id, name, 1)
-    
+    if is_public:
+        values = (channel_id, name, 1)
+    else:
+        values = (channel_id, name, 0)
     mycursor.execute(sqlf, values)
 
     sqlf = ("INSERT INTO channel_members"
